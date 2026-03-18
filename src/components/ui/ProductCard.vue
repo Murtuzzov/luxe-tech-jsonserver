@@ -17,6 +17,9 @@
       </div>
     </router-link>
 
+    <!-- Порядковый номер товара (для проверки пагинации) -->
+    <div class="text-xs text-gray-400 mb-1">#{{ phone.id }}</div>
+
     <!-- Название и цена (название кликабельное) -->
     <router-link :to="`/product/${phone.id}`">
       <h3

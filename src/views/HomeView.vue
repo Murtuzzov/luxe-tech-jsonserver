@@ -40,12 +40,74 @@
           </button>
         </div>
 
+        <!-- Состояния загрузки и ошибок -->
+        <div v-if="loading" class="text-center py-12">
+          <div
+            class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-electric-blue border-t-transparent"
+          ></div>
+          <p class="mt-4 text-gray-500">Загрузка товаров...</p>
+        </div>
+
+        <div v-else-if="error" class="text-center py-12">
+          <p class="text-red-500">Ошибка: {{ error }}</p>
+          <button
+            @click="fetchPhones()"
+            class="mt-4 px-4 py-2 bg-electric-blue text-white rounded-lg hover:bg-blue-700 transition"
+          >
+            Попробовать снова
+          </button>
+        </div>
+
         <!-- Сетка товаров -->
-        <ul class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <ul
+          v-else-if="filteredPhones.length > 0"
+          class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+        >
           <li v-for="phone in filteredPhones" :key="phone.id" class="list-none">
             <ProductCard :phone="phone" />
           </li>
         </ul>
+
+        <!-- Если ничего не найдено после фильтров -->
+        <div v-else class="text-center py-12">
+          <p class="text-gray-500">Товары не найдены</p>
+        </div>
+
+        <!-- Пагинация -->
+        <div
+          v-if="!loading && !error && totalPages > 1"
+          class="flex justify-center items-center gap-2 mt-8"
+        >
+          <button
+            @click="setPage(currentPage - 1)"
+            :disabled="currentPage === 1"
+            class="px-3 py-1 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition"
+          >
+            ←
+          </button>
+
+          <button
+            v-for="page in totalPages"
+            :key="page"
+            @click="setPage(page)"
+            class="px-3 py-1 border rounded-lg transition"
+            :class="
+              currentPage === page
+                ? 'bg-electric-blue text-white border-electric-blue'
+                : 'hover:bg-gray-50'
+            "
+          >
+            {{ page }}
+          </button>
+
+          <button
+            @click="setPage(currentPage + 1)"
+            :disabled="currentPage === totalPages"
+            class="px-3 py-1 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition"
+          >
+            →
+          </button>
+        </div>
       </div>
     </div>
 
@@ -103,7 +165,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 import HeroSection from "../components/ui/HeroSection.vue";
 import FiltersSidebar from "../components/ui/FiltersSidebar.vue";
 import ProductCard from "../components/ui/ProductCard.vue";
@@ -118,7 +180,14 @@ const {
   priceRange,
   maxPrice,
   resetFilters,
+  loading,
+  error,
+  currentPage,
+  totalPages,
+  fetchPhones,
+  setPage,
 } = usePhonesStore();
+
 const { battlePhones } = useBattleStore();
 
 const isMobileFiltersOpen = ref(false);
@@ -137,6 +206,11 @@ const handleResetFilters = () => {
   resetFilters();
   isMobileFiltersOpen.value = false;
 };
+
+// Загружаем первую страницу при монтировании компонента
+onMounted(() => {
+  fetchPhones();
+});
 
 defineEmits<{
   (e: "openBattle"): void;

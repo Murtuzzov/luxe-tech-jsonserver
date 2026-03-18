@@ -1,6 +1,16 @@
 import { ref, computed } from "vue";
-import phonesData from "../data/phones.json";
 import type { Phone } from "../types/phones";
+
+// API URL для JSON Server
+const API_URL = "http://localhost:3001/phones";
+
+// Состояние
+const phones = ref<Phone[]>([]);
+const totalCount = ref(0);
+const currentPage = ref(1);
+const pageSize = ref(8); // Сколько товаров на странице
+const loading = ref(false);
+const error = ref<string | null>(null);
 
 // Состояние фильтров
 const selectedBrands = ref<string[]>([]);
@@ -8,19 +18,63 @@ const selectedChips = ref<string[]>([]);
 const priceRange = ref<[number, number]>([0, 2000]);
 const maxPrice = ref(2000);
 
-// Получаем уникальные значения для фильтров
+// Вычисляемое общее количество страниц
+const totalPages = computed(() => Math.ceil(totalCount.value / pageSize.value));
+
+// Функция загрузки данных с сервера
+const fetchPhones = async (
+  page: number = currentPage.value,
+  limit: number = pageSize.value,
+) => {
+  loading.value = true;
+  error.value = null;
+
+  try {
+    const url = `${API_URL}?_page=${page}&_per_page=${limit}`;
+
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`Ошибка загрузки: ${response.status}`);
+    }
+
+    const responseData = await response.json();
+
+    phones.value = responseData.data;
+
+    totalCount.value = responseData.items || 0;
+  } catch (err: any) {
+    error.value = err.message;
+    console.error("Ошибка при загрузке телефонов:", err);
+  } finally {
+    loading.value = false;
+  }
+};
+
+// Функция для смены страницы
+const setPage = (page: number) => {
+  if (page < 1 || page > totalPages.value) return;
+  currentPage.value = page;
+  fetchPhones(page);
+};
+
+// Получаем уникальные значения для фильтров (из уже загруженных данных)
 const allBrands = computed(() => {
-  const brands = phonesData
+  if (!phones.value || phones.value.length === 0) return [];
+
+  const brands = phones.value
     .map((p) => {
       const nameParts = p.name.split(" ");
-      return nameParts[0] || ""; // Добавляем fallback
+      return nameParts[0] || "";
     })
-    .filter((brand) => brand !== ""); // Убираем пустые
+    .filter((brand) => brand !== "");
   return [...new Set(brands)].sort();
 });
 
 const allChips = computed(() => {
-  const chips = phonesData.map((p) => {
+  if (!phones.value || phones.value.length === 0) return [];
+
+  const chips = phones.value.map((p) => {
     if (p.chip.includes("Snapdragon")) return "Snapdragon";
     if (p.chip.includes("A17") || p.chip.includes("A19"))
       return "Apple A-series";
@@ -30,9 +84,14 @@ const allChips = computed(() => {
   return [...new Set(chips)].sort();
 });
 
-// Фильтрация товаров
+// Фильтрация товаров (теперь фильтруем ТОЛЬКО загруженную страницу)
 const filteredPhones = computed(() => {
-  return phonesData.filter((phone: Phone) => {
+  // Проверяем, что phones.value существует и является массивом
+  if (!phones.value || !Array.isArray(phones.value)) {
+    return [];
+  }
+
+  return phones.value.filter((phone: Phone) => {
     // Фильтр по цене
     if (
       phone.price < priceRange.value[0] ||
@@ -43,7 +102,7 @@ const filteredPhones = computed(() => {
 
     // Фильтр по бренду
     if (selectedBrands.value.length > 0) {
-      const brand = phone.name.split(" ")[0] || ""; // Добавляем fallback
+      const brand = phone.name.split(" ")[0] || "";
       if (!selectedBrands.value.includes(brand)) {
         return false;
       }
@@ -69,9 +128,14 @@ const filteredPhones = computed(() => {
 
 export function usePhonesStore() {
   return {
-    // Данные
-    allPhones: phonesData,
-    filteredPhones,
+    // Данные и состояние
+    phones,
+    totalCount,
+    currentPage,
+    pageSize,
+    totalPages,
+    loading,
+    error,
 
     // Фильтры
     selectedBrands,
@@ -83,7 +147,14 @@ export function usePhonesStore() {
     allBrands,
     allChips,
 
-    // Методы
+    // Отфильтрованные товары (уже с учётом фильтров)
+    filteredPhones,
+
+    // Методы для работы с данными
+    fetchPhones,
+    setPage,
+
+    // Методы для фильтров
     toggleBrand: (brand: string) => {
       if (selectedBrands.value.includes(brand)) {
         selectedBrands.value = selectedBrands.value.filter((b) => b !== brand);
