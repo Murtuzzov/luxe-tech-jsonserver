@@ -39,10 +39,60 @@ const fetchPhones = async (
     }
 
     const responseData = await response.json();
-
-    phones.value = responseData.data;
-
-    totalCount.value = responseData.items || 0;
+    
+    // Универсальная обработка ответа от JSON Server
+    if (Array.isArray(responseData)) {
+      // Вариант 1: пришел прямой массив (JSON Server 0.x или простая настройка)
+      phones.value = responseData;
+      
+      // Пытаемся получить общее количество из заголовка X-Total-Count
+      const totalCountHeader = response.headers.get('X-Total-Count');
+      if (totalCountHeader) {
+        totalCount.value = parseInt(totalCountHeader);
+      } else {
+        // Если заголовка нет, используем длину массива (но это не точно для пагинации)
+        totalCount.value = responseData.length;
+        console.warn('X-Total-Count header not found, using array length');
+      }
+    } 
+    else if (responseData && typeof responseData === 'object') {
+      // Вариант 2: пришел объект с данными (JSON Server 1.x)
+      if (responseData.data && Array.isArray(responseData.data)) {
+        phones.value = responseData.data;
+        totalCount.value = responseData.items || responseData.data.length;
+      }
+      // Вариант 3: другой объектный формат
+      else {
+        // Проверяем, может быть это сам объект с телефонами в другом поле
+        const possibleDataFields = ['phones', 'items', 'results'];
+        let foundData = false;
+        
+        for (const field of possibleDataFields) {
+          if (responseData[field] && Array.isArray(responseData[field])) {
+            phones.value = responseData[field];
+            totalCount.value = responseData.total || responseData[field].length;
+            foundData = true;
+            break;
+          }
+        }
+        
+        if (!foundData) {
+          console.error("Не удалось распознать формат ответа:", responseData);
+          phones.value = [];
+          totalCount.value = 0;
+        }
+      }
+    }
+    else {
+      console.error("Неожиданный формат ответа:", responseData);
+      phones.value = [];
+      totalCount.value = 0;
+    }
+    
+    // Для отладки - посмотрим, что получили
+    console.log('Загружено телефонов:', phones.value.length);
+    console.log('Всего товаров:', totalCount.value);
+    
   } catch (err: any) {
     error.value = err.message;
     console.error("Ошибка при загрузке телефонов:", err);
@@ -126,6 +176,23 @@ const filteredPhones = computed(() => {
   });
 });
 
+// Функция для получения одного телефона по ID (пригодится для ProductView)
+const getPhoneById = async (id: number): Promise<Phone | null> => {
+  try {
+    // Сначала ищем в уже загруженных
+    const localPhone = phones.value.find(p => p.id === id);
+    if (localPhone) return localPhone;
+    
+    // Если не нашли, грузим с сервера
+    const response = await fetch(`${API_URL}/${id}`);
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (err) {
+    console.error('Ошибка при загрузке телефона:', err);
+    return null;
+  }
+};
+
 export function usePhonesStore() {
   return {
     // Данные и состояние
@@ -153,6 +220,7 @@ export function usePhonesStore() {
     // Методы для работы с данными
     fetchPhones,
     setPage,
+    getPhoneById, // новый метод
 
     // Методы для фильтров
     toggleBrand: (brand: string) => {
