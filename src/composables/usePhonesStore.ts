@@ -30,8 +30,7 @@ const fetchPhones = async (
   error.value = null;
 
   try {
-    //  правильный URL
-    const url = ${API_URL}?_page=${page}&_limit=${limit};
+    const url = ${API_URL}?_page=${page}&_per_page=${limit};
 
     const response = await fetch(url);
 
@@ -41,21 +40,9 @@ const fetchPhones = async (
 
     const responseData = await response.json();
 
-    //  данные
     phones.value = responseData;
 
-    //  пробуем взять total из headers
-    const total = response.headers.get("X-Total-Count");
-
-    if (total) {
-      totalCount.value = Number(total);
-    } else {
-      //  fallback (если Render не даёт header)
-      const allDataResponse = await fetch(API_URL);
-      const allData = await allDataResponse.json();
-      totalCount.value = allData.length;
-    }
-
+    totalCount.value = responseData.lenght || 0;
   } catch (err: any) {
     error.value = err.message;
     console.error("Ошибка при загрузке телефонов:", err);
