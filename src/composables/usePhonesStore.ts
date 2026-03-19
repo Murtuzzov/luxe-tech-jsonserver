@@ -40,7 +40,7 @@ const fetchPhones = async (
 
     const responseData = await response.json();
 
-    phones.value = responseData.data;
+    phones.value = responseData.phones;
 
     totalCount.value = responseData.items || 0;
   } catch (err: any) {
