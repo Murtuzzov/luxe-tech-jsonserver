@@ -2,7 +2,7 @@ import { ref, computed } from "vue";
 import type { Phone } from "../types/phones";
 
 // API URL для JSON Server
-const API_URL = "http://localhost:3001/phones";
+const API_URL = "https://luxe-tech-server.onrender.com/phones";
 
 // Состояние
 const phones = ref<Phone[]>([]);
