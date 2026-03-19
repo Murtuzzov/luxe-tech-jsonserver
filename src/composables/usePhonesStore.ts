@@ -40,9 +40,9 @@ const fetchPhones = async (
 
     const responseData = await response.json();
 
-    phones.value = responseData.data;
+    phones.value = responseData;
 
-    totalCount.value = responseData.items || 0;
+    totalCount.value = responseData.lenght || 0;
   } catch (err: any) {
     error.value = err.message;
     console.error("Ошибка при загрузке телефонов:", err);
