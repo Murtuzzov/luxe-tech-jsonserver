@@ -1,7 +1,7 @@
 import { ref, computed } from "vue";
 import type { Phone } from "../types/phones";
 
-// API URL для JSON Server
+// API URL для Render
 const API_URL = "https://luxe-tech-server.onrender.com/phones";
 
 // Состояние
@@ -30,19 +30,19 @@ const fetchPhones = async (
   error.value = null;
 
   try {
-    const url = ${API_URL}?_page=${page}&_per_page=${limit};
+    const url = `${API_URL}?_page=${page}&_per_page=${limit}`;
 
     const response = await fetch(url);
 
     if (!response.ok) {
-      throw new Error(Ошибка загрузки: ${response.status});
+      throw new Error(`Ошибка загрузки: ${response.status}`);
     }
 
     const responseData = await response.json();
 
-    phones.value = responseData;
+    phones.value = responseData.data;
 
-    totalCount.value = responseData.lenght || 0;
+    totalCount.value = responseData.items || 0;
   } catch (err: any) {
     error.value = err.message;
     console.error("Ошибка при загрузке телефонов:", err);
