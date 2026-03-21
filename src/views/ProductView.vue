@@ -8,9 +8,17 @@
       ← Назад в каталог
     </router-link>
 
+    <!-- Состояние загрузки -->
+    <div v-if="loading" class="text-center py-12">
+      <div
+        class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-electric-blue border-t-transparent"
+      ></div>
+      <p class="mt-4 text-gray-500">Загрузка товара...</p>
+    </div>
+
     <!-- Если товар не найден -->
     <div
-      v-if="!phone"
+      v-else-if="!phone"
       class="text-center py-12 bg-white rounded-2xl shadow-glass"
     >
       <h2 class="text-xl text-gray-600">Товар не найден</h2>
@@ -101,21 +109,25 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { ref, onMounted } from "vue";
 import { useRoute } from "vue-router";
 import { Swords } from "lucide-vue-next";
 import { useBattleStore } from "../composables/useBattleStore";
-import { useCartStore } from "../composables/useCartStore"; // ← добавили импорт корзины
-import phonesData from "../data/phones.json";
+import { useCartStore } from "../composables/useCartStore";
+import { usePhonesStore } from "../composables/usePhonesStore";
+import type { Phone } from "../types/phones";
 
 const route = useRoute();
 const { addToBattle, isInBattle } = useBattleStore();
-const { addToCart } = useCartStore(); // ← добавили функцию корзины
+const { addToCart } = useCartStore();
+const { getPhoneById, loading } = usePhonesStore();
 
-// Находим телефон по id из URL
-const phone = computed(() => {
+const phone = ref<Phone | null>(null);
+
+// Загружаем телефон по ID из URL
+onMounted(async () => {
   const id = Number(route.params.id);
-  return phonesData.find((p) => p.id === id);
+  phone.value = await getPhoneById(id);
 });
 
 const toggleBattle = () => {
